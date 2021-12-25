@@ -41,6 +41,7 @@ static string statement (Invoice invoice, List<Play> plays)
         result.Audience = aPerformance.Audience;
         result.play = playFor(aPerformance);
         result.amount = amoutFor(result);
+        result.volumeCredits = volumeCreditsFor(result);
 
         return result;
     }
@@ -75,6 +76,14 @@ static string statement (Invoice invoice, List<Play> plays)
 
         return result;
     }
+    decimal volumeCreditsFor(dynamic aPerformance)
+    {
+        decimal result = Math.Max(aPerformance.Audience - 30, 0);
+        if (aPerformance.play.Type == "comedy")
+            result += Math.Floor(aPerformance.Audience / 5m);
+        return result;
+    }
+
     dynamic statementData = new ExpandoObject();
     statementData.customer = invoice.Customer;
     statementData.performances = invoice.Performances.Select(enrichPerformance);
@@ -84,15 +93,7 @@ static string statement (Invoice invoice, List<Play> plays)
 }
 
 static string renderPlainText(dynamic statementData, List<Play> plays)
-{
-    
-    decimal volumeCreditsFor(dynamic aPerformance)
-    {
-        decimal result = Math.Max(aPerformance.Audience - 30, 0);
-        if (aPerformance.play.Type == "comedy")
-            result += Math.Floor(aPerformance.Audience / 5m);
-        return result;
-    }
+{ 
     string usd(decimal aNumber)
         => string.Format("{0:C}", aNumber / 100);
     decimal totalVolumeCredits()
@@ -100,7 +101,7 @@ static string renderPlainText(dynamic statementData, List<Play> plays)
         decimal result = 0;
         foreach (dynamic perf in statementData.performances)
         {
-            result += volumeCreditsFor(perf);
+            result += perf.volumeCredits;
         }
         return result;
     }
