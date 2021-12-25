@@ -34,19 +34,34 @@ app.Run();
 
 static string statement (Invoice invoice, List<Play> plays)
 {
+    dynamic enrichPerformance(Performance aPerformance)
+    {
+        dynamic result = new ExpandoObject();
+        result.PlayId = aPerformance.PlayId;
+        result.Audience = aPerformance.Audience;
+        result.play = playFor(aPerformance);
+
+        return result;
+    }
+    Play playFor(Performance aPerformance)
+    {
+        return plays.First(p => p.PlayId == aPerformance.PlayId);
+    }
+
     dynamic statementData = new ExpandoObject();
     statementData.customer = invoice.Customer;
+    statementData.performances = invoice.Performances.Select(enrichPerformance);
 
-    return renderPlainText(statementData, invoice, plays);
+    return renderPlainText(statementData, plays);
     
 }
 
-static string renderPlainText(dynamic statementData, Invoice invoice, List<Play> plays)
+static string renderPlainText(dynamic statementData, List<Play> plays)
 {
-    int amoutFor(Performance aPerformance)
+    int amoutFor(dynamic aPerformance)
     {
         int result = 0;
-        switch (playFor(aPerformance).Type)
+        switch (aPerformance.play.Type)
         {
             case "tragedy":
                 result = 40000;
@@ -65,19 +80,15 @@ static string renderPlainText(dynamic statementData, Invoice invoice, List<Play>
                 break;
 
             default:
-                throw new Exception($"Unknown type {playFor(aPerformance).Type}");
+                throw new Exception($"Unknown type {aPerformance.play.Type}");
         }
 
         return result;
     }
-    Play playFor(Performance aPerformance)
-    {
-        return plays.First(p => p.PlayId == aPerformance.PlayId);
-    }
-    decimal volumeCreditsFor(Performance aPerformance)
+    decimal volumeCreditsFor(dynamic aPerformance)
     {
         decimal result = Math.Max(aPerformance.Audience - 30, 0);
-        if (playFor(aPerformance).Type == "comedy")
+        if (aPerformance.play.Type == "comedy")
             result += Math.Floor(aPerformance.Audience / 5m);
         return result;
     }
@@ -86,7 +97,7 @@ static string renderPlainText(dynamic statementData, Invoice invoice, List<Play>
     decimal totalVolumeCredits()
     {
         decimal result = 0;
-        foreach (Performance perf in invoice.Performances)
+        foreach (dynamic perf in statementData.performances)
         {
             result += volumeCreditsFor(perf);
         }
@@ -95,7 +106,7 @@ static string renderPlainText(dynamic statementData, Invoice invoice, List<Play>
     decimal totalAmount()
     {
         int result = 0;
-        foreach (Performance perf in invoice.Performances)
+        foreach (dynamic perf in statementData.performances)
         {
             result += amoutFor(perf);
         }
@@ -104,9 +115,9 @@ static string renderPlainText(dynamic statementData, Invoice invoice, List<Play>
 
 
     string result = $"Statement for {statementData.customer}\n";
-    foreach (Performance perf in invoice.Performances)
+    foreach (dynamic perf in statementData.performances)
     {
-        result += $"\t{playFor(perf).Name}: {usd(amoutFor(perf))} ({perf.Audience} seats)\n";
+        result += $"\t{perf.play.Name}: {usd(amoutFor(perf))} ({perf.Audience} seats)\n";
     }
 
     result += $"Amount owed is {usd(totalAmount())}\n";
