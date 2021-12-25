@@ -40,6 +40,7 @@ static string statement (Invoice invoice, List<Play> plays)
         result.PlayId = aPerformance.PlayId;
         result.Audience = aPerformance.Audience;
         result.play = playFor(aPerformance);
+        result.amount = amoutFor(result);
 
         return result;
     }
@@ -47,17 +48,6 @@ static string statement (Invoice invoice, List<Play> plays)
     {
         return plays.First(p => p.PlayId == aPerformance.PlayId);
     }
-
-    dynamic statementData = new ExpandoObject();
-    statementData.customer = invoice.Customer;
-    statementData.performances = invoice.Performances.Select(enrichPerformance);
-
-    return renderPlainText(statementData, plays);
-    
-}
-
-static string renderPlainText(dynamic statementData, List<Play> plays)
-{
     int amoutFor(dynamic aPerformance)
     {
         int result = 0;
@@ -85,6 +75,17 @@ static string renderPlainText(dynamic statementData, List<Play> plays)
 
         return result;
     }
+    dynamic statementData = new ExpandoObject();
+    statementData.customer = invoice.Customer;
+    statementData.performances = invoice.Performances.Select(enrichPerformance);
+
+    return renderPlainText(statementData, plays);
+    
+}
+
+static string renderPlainText(dynamic statementData, List<Play> plays)
+{
+    
     decimal volumeCreditsFor(dynamic aPerformance)
     {
         decimal result = Math.Max(aPerformance.Audience - 30, 0);
@@ -108,7 +109,7 @@ static string renderPlainText(dynamic statementData, List<Play> plays)
         int result = 0;
         foreach (dynamic perf in statementData.performances)
         {
-            result += amoutFor(perf);
+            result += perf.amount;
         }
         return result;
     }
@@ -117,7 +118,7 @@ static string renderPlainText(dynamic statementData, List<Play> plays)
     string result = $"Statement for {statementData.customer}\n";
     foreach (dynamic perf in statementData.performances)
     {
-        result += $"\t{perf.play.Name}: {usd(amoutFor(perf))} ({perf.Audience} seats)\n";
+        result += $"\t{perf.play.Name}: {usd(perf.amount)} ({perf.Audience} seats)\n";
     }
 
     result += $"Amount owed is {usd(totalAmount())}\n";
